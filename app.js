@@ -306,7 +306,11 @@ function repeticiones(texto) {
 }
 
 function escapeHtml(s) {
-  return s.replace(/[&<>"]/g, (c) => ({ "&":"&", "<":"<", ">":">", '"':""" }[c]));
+  return String(s)
+    .replace(/&/g, "\u0026amp;")
+    .replace(/</g, "\u0026lt;")
+    .replace(/>/g, "\u0026gt;")
+    .replace(/"/g, "\u0026quot;");
 }
 
 function drawNums() {
@@ -549,7 +553,8 @@ function init() {
     cargar(JSON.parse(await f.text()));
     toast("Importada");
   };
-  $("letra").value = "";
+  $("letra").value = EJEMPLO;
+  $("titulo").value = "La luz se queda";
   renderAnalisis();
 }
 
