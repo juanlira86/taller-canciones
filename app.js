@@ -79,75 +79,170 @@ function sinAcento(ch) {
   return { á:"a", é:"e", í:"i", ó:"o", ú:"u", à:"a", è:"e", ì:"i", ò:"o", ù:"u", â:"a", ê:"e", î:"i", ô:"o", û:"u", ä:"a", ë:"e", ï:"i", ö:"o", ü:"u", ã:"a", õ:"o" }[ch] || ch;
 }
 
+function esVocalBase(ch) {
+  return "aeiouü".includes(sinAcento(ch));
+}
+
+function silabearPalabra(pal, idioma, dieresis) {
+  const limpia = pal.toLowerCase().replace(/[^a-záéíóúüñ']/g, "");
+  if (!limpia) return [];
+  if (idioma === "en") return silabeoIngles(limpia);
+  if (idioma === "fr") return silabeoFrances(limpia);
+  return silabeoEspanol(limpia, dieresis);
+}
+
+function silabeoEspanol(pal, dieresis) {
+  if (pal === "y") return ["y"];
+  const chars = [...pal];
+  const vocal = (c) => "aeiouáéíóúü".includes(c);
+  const nucleos = [];
+  const huecos = [];
+  let cons = "";
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    const yVocal = c === "y" && i > 0 && (i === chars.length - 1 || !vocal(chars[i + 1] || ""));
+    if (!vocal(c) && !yVocal) { cons += c; continue; }
+    let nucleo = c;
+    i++;
+    while (i < chars.length) {
+      if (chars[i] === "h" && vocal(chars[i + 1] || "")) { nucleo += chars[i]; i++; continue; }
+      const sigue = chars[i];
+      const ySigue = sigue === "y" && i === chars.length - 1;
+      if (!(vocal(sigue) || ySigue)) break;
+      const prev = [...nucleo].reverse().find((x) => x !== "h");
+      const a = sinAcento(prev);
+      const b = sinAcento(sigue);
+      const debil = (x) => x === "i" || x === "u" || x === "ü";
+      const hiato = (esAcento(prev) && debil(a)) || (esAcento(sigue) && debil(b)) || ("aeo".includes(a) && "aeo".includes(b));
+      if (hiato) break;
+      nucleo += sigue;
+      i++;
+    }
+    i--;
+    huecos.push(cons);
+    cons = "";
+    nucleos.push(nucleo);
+  }
+  if (!nucleos.length) return [pal];
+  huecos.push(cons);
+  const sil = nucleos.map((n, i) => n);
+  sil[0] = huecos[0] + sil[0];
+  for (let i = 0; i < nucleos.length - 1; i++) {
+    const cola = huecos[i + 1];
+    const grupo = /^(bl|br|cl|cr|dr|fl|fr|gl|gr|pl|pr|tr|tl|ch|ll)/;
+    let izq = "";
+    let der = cola;
+    if (cola.length <= 1) der = cola;
+    else if (cola.length === 2) {
+      if (grupo.test(cola)) der = cola;
+      else { izq = cola[0]; der = cola[1]; }
+    } else if (grupo.test(cola.slice(-2))) {
+      izq = cola.slice(0, -2);
+      der = cola.slice(-2);
+    } else {
+      izq = cola.slice(0, -1);
+      der = cola.slice(-1);
+    }
+    sil[i] += izq;
+    sil[i + 1] = der + sil[i + 1];
+  }
+  sil[sil.length - 1] += huecos[huecos.length - 1];
+  return sil.filter(Boolean);
+}
+
+function partirNucleo(texto, dieresis) {
+  const letras = [...texto];
+  const partes = [];
+  let buf = "";
+  const vocalDe = (s) => [...s].filter((c) => c !== "h").pop();
+  for (const c of letras) {
+    if (c === "h") { buf += c; continue; }
+    if (!vocalDe(buf)) { buf += c; continue; }
+    const prev = vocalDe(buf);
+    const a = sinAcento(prev);
+    const b = sinAcento(c);
+    const debil = (x) => x === "i" || x === "u" || x === "ü";
+    const hiatoAcento = esAcento(prev) && debil(a) || esAcento(c) && debil(b);
+    const hiatoFuerte = "aeo".includes(a) && "aeo".includes(b);
+    const separar = dieresis ? hiatoAcento || hiatoFuerte || (!debil(a) && !debil(b)) : hiatoAcento || hiatoFuerte;
+    if (separar) { partes.push(buf); buf = c; }
+    else buf += c;
+  }
+  if (buf) partes.push(buf);
+  return partes;
+}
+
+function repartirConsonantes(silabas) {
+  const grupo = /^(bl|br|cl|cr|dr|fl|fr|gl|gr|pl|pr|tr|tl|ch|ll)/;
+  const out = silabas.map((s) => s);
+  for (let i = 0; i < out.length - 1; i++) {
+    const m = out[i].match(/^(.*?)([bcdfghjklmnñpqrstvxyz]+)$/i);
+    if (!m) continue;
+    const cuerpo = m[1];
+    const cola = m[2];
+    if (!cuerpo) continue;
+    let seQueda = "";
+    let pasa = cola;
+    if (cola.length === 1) pasa = cola;
+    else if (cola.length === 2) {
+      if (grupo.test(cola)) pasa = cola;
+      else { seQueda = cola[0]; pasa = cola.slice(1); }
+    } else if (grupo.test(cola.slice(-2))) {
+      seQueda = cola.slice(0, -2);
+      pasa = cola.slice(-2);
+    } else {
+      seQueda = cola.slice(0, -1);
+      pasa = cola.slice(-1);
+    }
+    out[i] = cuerpo + seQueda;
+    out[i + 1] = pasa + out[i + 1];
+  }
+  return out.filter(Boolean);
+}
+
+function silabeoFrances(pal) {
+  const w = pal.replace(/[^a-zàâäéèêëïîôùûüœæ']/g, "");
+  if (!w) return [];
+  const partes = w.split(/[^aeiouyàâäéèêëïîôùûüœæ]+/).filter(Boolean);
+  const n = Math.max(1, partes.length);
+  const sil = [];
+  const size = Math.ceil(w.length / n);
+  for (let i = 0; i < n; i++) sil.push(w.slice(i * size, (i + 1) * size) || w[0]);
+  return sil;
+}
+
 function gruposDeVerso(linea, idioma) {
   const sinalefa = $("sinalefa").checked && ["es", "it", "pt"].includes(idioma);
   const dieresis = $("dieresis").checked;
   const frClasico = $("frClasico").checked;
-  const limpia = linea.toLowerCase().replace(/[«»“”"()¿?¡!.,;:—–\-]/g, " ").replace(/\s+/g, " ").trim();
-  if (!limpia) return [];
-  const palabras = limpia.split(" ");
+  const trozos = linea.toLowerCase().split(/([,;:.!?…—–])/);
   const silabas = [];
-  palabras.forEach((pal, idx) => {
-    const propias = silabearPalabra(pal, idioma, dieresis);
-    if (sinalefa && silabas.length && propias.length) {
-      const prev = silabas[silabas.length - 1];
-      const last = prev[prev.length - 1];
-      const first = propias[0][0];
-      const puenteH = pal.startsWith("h") && vocales(sinAcento(pal[1] || ""));
-      if ((vocales(sinAcento(last)) && (vocales(sinAcento(first)) || puenteH))) {
-        prev[prev.length - 1] = last + propias[0];
-        propias.shift();
-      }
-    }
-    propias.forEach((s) => silabas.push([s]));
-    void idx;
-  });
-  let planas = silabas.map((s) => s.join(""));
-  if (idioma === "fr" && frClasico && planas.length) {
-    const ultima = planas[planas.length - 1];
-    if (/e$/.test(ultima) && !/[éè]/.test(ultima) && planas.length > 1) planas.pop();
-  }
-  return planas.filter(Boolean);
-}
-
-function silabearPalabra(pal, idioma, dieresis) {
-  const chars = [...pal].filter((c) => /[a-záéíóúàèìòùäëïöüâêîôûãõæœ']/i.test(c));
-  if (!chars.length) return [];
-  if (idioma === "en") return silabeoIngles(chars.join(""));
-  const debiles = new Set(["i", "u", "ü"]);
-  const out = [];
-  let buf = "";
-  for (let i = 0; i < chars.length; i++) {
-    const c = chars[i];
-    buf += c;
-    if (!vocales(sinAcento(c)) && c !== "y") continue;
-    const next = chars[i + 1];
-    const next2 = chars[i + 2];
-    if (next && vocales(sinAcento(next))) {
-      const a = sinAcento(c);
-      const b = sinAcento(next);
-      const hiato = dieresis && (esAcento(c) && debiles.has(a) || esAcento(next) && debiles.has(b));
-      const diptongo = !hiato && (debiles.has(a) || debiles.has(b) || a === b);
-      if (diptongo) {
-        buf += next;
-        i++;
-        if (next2 && debiles.has(sinAcento(next2)) && !esAcento(next2) && vocales(sinAcento(next2))) {
-          buf += next2;
-          i++;
+  let corte = false;
+  trozos.forEach((trozo) => {
+    if (/^[,;:.!?…—–]$/.test(trozo)) { corte = true; return; }
+    const palabras = trozo.replace(/[«»“”"()¿¡\-]/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+    palabras.forEach((pal) => {
+      const propias = silabearPalabra(pal, idioma, dieresis);
+      if (!propias.length) return;
+      if (sinalefa && silabas.length && !corte) {
+        const prev = silabas[silabas.length - 1];
+        const last = [...prev].reverse().find((c) => esVocalBase(c) || c === "y");
+        const iniciaVocal = esVocalBase(propias[0][0]) || propias[0].startsWith("h") && esVocalBase(propias[0][1] || "");
+        const acabaVocal = last && (esVocalBase(prev[prev.length - 1]) || prev.endsWith("y"));
+        if (acabaVocal && iniciaVocal) {
+          silabas[silabas.length - 1] = prev + propias[0];
+          propias.shift();
         }
       }
-    }
-    const despues = chars[i + 1];
-    if (!despues || vocales(sinAcento(despues))) {
-      out.push(buf);
-      buf = "";
-    }
+      propias.forEach((s) => silabas.push(s));
+      corte = false;
+    });
+  });
+  if (idioma === "fr" && frClasico && silabas.length) {
+    const ultima = silabas[silabas.length - 1];
+    if (/e$/.test(ultima) && !/[éè]/.test(ultima) && silabas.length > 1) silabas.pop();
   }
-  if (buf) {
-    if (out.length) out[out.length - 1] += buf;
-    else out.push(buf);
-  }
-  return out.length ? out : [pal];
+  return silabas.filter(Boolean);
 }
 
 function silabeoIngles(word) {
@@ -233,7 +328,8 @@ function nombreBloque(b) {
 
 function encabalgado(a, b) {
   if (!a || !b) return false;
-  return !/[.!?…:]$/.test(a.raw.trim()) && /^[a-záéíóúàè]/.test(b.raw.trim());
+  if (/[,;:.!?…—–]$/.test(a.raw.trim())) return false;
+  return /^(y|e|o|u|que|de|del|en|a|al|con|sin|por|para)\b/i.test(b.raw.trim());
 }
 
 function renderAnalisis() {
@@ -263,7 +359,7 @@ function renderAnalisis() {
       const enc = encabalgado(v, next) ? `<span class="tag">encabalgamiento</span>` : "";
       return `<div class="verso">
         <span>${v.i + 1}</span>
-        <div><div>${escapeHtml(v.raw)}</div><span class="tag">${tipoVerso(v.n)} · rima ${v.rima.asonante || "—"} · acento sil. ${v.acento + 1} ${enc}</span></div>
+        <div><div>${escapeHtml(v.raw)}</div><span class="tag">${tipoVerso(v.n)} · ${v.sil.join(" · ")}</span><br><span class="tag">rima ${v.rima.asonante || "—"} · acento en sílaba ${v.acento + 1} ${enc}</span></div>
         <input type="number" min="0" max="30" value="${v.n}" data-key="${escapeHtml(v.key)}" title="Corregir conteo" />
       </div>`;
     }).join("");
