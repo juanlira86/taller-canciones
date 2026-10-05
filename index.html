@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Taller de canciones</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="mark">♩</span>
+    <div>
+      <h1>Taller de canciones</h1>
+      <p>Letra, métrica y acordes. Tú decides qué se queda.</p>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab on" data-tab="editor">Editor</button>
+    <button class="tab" data-tab="mejora">Mejora</button>
+    <button class="tab" data-tab="acordes">Melodía</button>
+    <button class="tab" data-tab="biblioteca">Biblioteca</button>
+    <button class="tab" data-tab="ajustes">Ajustes</button>
+  </nav>
+</header>
+
+<main>
+  <section id="editor" class="panel on">
+    <div class="meta">
+      <label>Título<input id="titulo" placeholder="Sin título" /></label>
+      <label>Género
+        <select id="genero">
+          <option>balada</option><option>rock</option><option>pop</option>
+          <option>folk</option><option>electrónica</option><option>otro</option>
+        </select>
+      </label>
+      <label>Tempo
+        <select id="tempo">
+          <option value="lento">lento</option>
+          <option value="medio" selected>medio</option>
+          <option value="rápido">rápido</option>
+        </select>
+      </label>
+      <label>Emoción
+        <select id="emocion">
+          <option>nostalgia</option><option>melancolía</option><option>ternura</option>
+          <option>rabia</option><option>euforia</option><option>deseo</option><option>calma</option>
+        </select>
+      </label>
+      <label>Idioma de la letra
+        <select id="idioma">
+          <option value="es">español</option>
+          <option value="en">inglés</option>
+          <option value="fr">francés</option>
+          <option value="it">italiano</option>
+          <option value="pt">portugués</option>
+        </select>
+      </label>
+    </div>
+    <div class="work">
+      <div class="editor-col">
+        <div class="toolbar">
+          <button type="button" data-block="estrofa">Estrofa</button>
+          <button type="button" data-block="estribillo">Estribillo</button>
+          <button type="button" data-block="pre">Pre-estribillo</button>
+          <button type="button" data-block="puente">Puente</button>
+          <button type="button" data-block="outro">Outro</button>
+          <button type="button" id="ejemplo">Ejemplo</button>
+          <label class="file">Subir .txt<input id="file" type="file" accept=".txt,text/plain" hidden /></label>
+        </div>
+        <div class="editor-wrap">
+          <pre id="nums" aria-hidden="true">1</pre>
+          <textarea id="letra" spellcheck="true" placeholder="Escribe o pega una estrofa. Separa estrofas con una línea en blanco."></textarea>
+        </div>
+        <p class="hint">Marca secciones con una línea que diga [Estribillo], [Puente], [Pre] o [Outro]. El análisis ignora esas etiquetas.</p>
+      </div>
+      <aside class="analysis" id="analisis">
+        <h2>Análisis</h2>
+        <div id="resumen"></div>
+        <div id="versos"></div>
+        <div id="alertas"></div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="mejora" class="panel">
+    <div class="toolbar">
+      <button type="button" data-accion="rima">3 finales que rimen</button>
+      <button type="button" data-accion="medida">Ajustar a octosílabos</button>
+      <button type="button" data-accion="cliche">Quitar un cliché</button>
+      <button type="button" data-accion="estribillo">Estribillo más cantable</button>
+      <button type="button" data-accion="tono">Reescribir según género</button>
+      <button type="button" data-accion="adaptar">Adaptar idioma (sílabas aprox.)</button>
+      <label>Hacia
+        <select id="hacia">
+          <option value="es">español</option>
+          <option value="fr">francés</option>
+          <option value="en">inglés</option>
+          <option value="it">italiano</option>
+          <option value="pt">portugués</option>
+        </select>
+      </label>
+    </div>
+    <p class="hint">Las propuestas salen de reglas y un banco local de rimas e imágenes. Acepta verso a verso; no se pisa la letra sola.</p>
+    <div id="sugerencias"></div>
+  </section>
+
+  <section id="acordes" class="panel">
+    <div class="meta">
+      <label>Tonalidad
+        <select id="tonalidad"></select>
+      </label>
+      <label>Carácter
+        <select id="tension">
+          <option value="simple">más simple</option>
+          <option value="base" selected>base del género</option>
+          <option value="tensa">más tensa</option>
+        </select>
+      </label>
+      <button type="button" id="otra">Otra progresión</button>
+      <button type="button" id="lead">Copiar lead sheet</button>
+    </div>
+    <div id="progresion"></div>
+    <div id="contorno"></div>
+  </section>
+
+  <section id="biblioteca" class="panel">
+    <div class="toolbar">
+      <button type="button" id="guardar">Guardar en biblioteca</button>
+      <button type="button" id="exportar">Exportar JSON</button>
+      <label class="file">Importar JSON<input id="importar" type="file" accept="application/json,.json" hidden /></label>
+    </div>
+    <div id="lista"></div>
+  </section>
+
+  <section id="ajustes" class="panel">
+    <div class="settings">
+      <label class="check"><input type="checkbox" id="sinalefa" checked /> Sinalefa automática (español, italiano, portugués)</label>
+      <label class="check"><input type="checkbox" id="dieresis" /> Contar diéresis (separar diptongo si hay acento débil)</label>
+      <label class="check"><input type="checkbox" id="frClasico" checked /> Francés clásico: no contar la e muda al final del verso</label>
+      <label>Esquema de rima forzado
+        <select id="esquemaForzado">
+          <option value="">detectar</option>
+          <option>ABAB</option><option>AABB</option><option>ABBA</option><option>ABCB</option><option>libre</option>
+        </select>
+      </label>
+      <p class="hint">El conteo de cada verso se puede editar en el panel de análisis. Esa corrección manda sobre la regla automática.</p>
+    </div>
+  </section>
+</main>
+<div id="toast" role="status"></div>
+<script src="app.js"></script>
+</body>
+</html>
